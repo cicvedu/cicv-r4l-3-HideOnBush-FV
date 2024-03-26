@@ -1,3 +1,7 @@
-busybox-1.36.1/_install
+busybox-1.36.1/
 linux/build
 .vscode/
+*.o
+*.cmd
+*.a
+*.in
