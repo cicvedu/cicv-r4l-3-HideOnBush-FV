@@ -8,11 +8,7 @@
 use crate::{clk::Clk, error::from_kernel_err_ptr};
 
 use crate::{
-    bindings,
-    revocable::{Revocable, RevocableGuard},
-    str::CStr,
-    sync::{LockClassKey, NeedsLockClass, RevocableMutex, RevocableMutexGuard, UniqueArc},
-    Result,
+    bindings, pr_info, revocable::{Revocable, RevocableGuard}, str::CStr, sync::{LockClassKey, NeedsLockClass, RevocableMutex, RevocableMutexGuard, UniqueArc}, Result
 };
 use core::{
     fmt,
@@ -44,6 +40,7 @@ pub unsafe trait RawDevice {
 
         // SAFETY: `ptr` is valid because `self` keeps it alive.
         let name = unsafe { bindings::dev_name(ptr) };
+        pr_info!("name in RawDevice: {}", CStr::from_char_ptr(name));
 
         // SAFETY: The name of the device remains valid while it is alive (because the device is
         // never renamed, per the safety requirement of this trait). This is guaranteed to be the
@@ -273,6 +270,7 @@ impl<T, U, V> Data<T, U, V> {
 
         // SAFETY: `Data::registrations` is pinned when `Data` is.
         let pinned = unsafe { ret.as_mut().map_unchecked_mut(|d| &mut d.registrations) };
+        pr_info!("try_new in Data: {name}");
         pinned.init(name, key1, key2);
         Ok(ret)
     }

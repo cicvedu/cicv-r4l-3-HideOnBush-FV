@@ -191,6 +191,12 @@ impl net::DeviceOperations for NetDevice {
 
     fn stop(_dev: &net::Device, _data: &NetDevicePrvData) -> Result {
         pr_info!("Rust for linux e1000 driver demo (net device stop)\n");
+        _dev.netif_stop_queue();
+        _dev.netif_carrier_off();
+        drop(&_data.rx_ring);
+        drop(&_data.tx_ring);
+        _data.napi.disable();
+        unsafe {Box::from_raw(_data._irq_handler.load(core::sync::atomic::Ordering::Relaxed)).drop_all()};
         Ok(())
     }
 
@@ -298,6 +304,8 @@ struct E1000DrvPrvData {
 impl driver::DeviceRemoval for E1000DrvPrvData {
     fn device_remove(&self) {
         pr_info!("Rust for linux e1000 driver demo (device_remove)\n");
+        drop(&self._netdev_reg);
+        //self._netdev_reg.unregister();
     }
 }
 
@@ -466,8 +474,16 @@ impl pci::Driver for E1000Drv {
         )?)
     }
 
-    fn remove(data: &Self::Data) {
+    fn remove(dev: &mut pci::Device, data: &Self::Data) {
         pr_info!("Rust for linux e1000 driver demo (remove)\n");
+        //let dev = data._netdev_reg.dev_get();
+        //drop(&data._netdev_reg);
+        let bars = dev.select_bars((bindings::IORESOURCE_MEM | bindings::IORESOURCE_IO) as u64);
+        dev.release_selected_regions(bars);
+        pr_info!("release_selected_regions\n");
+        let netdev = data._netdev_reg.dev_get();
+        netdev.netif_stop_queue();
+        dev.disable_device();
     }
 }
 struct E1000KernelMod {

@@ -13,7 +13,7 @@ use core::convert::TryInto;
 use core::marker::PhantomPinned;
 use core::pin::Pin;
 
-use crate::bindings;
+use crate::{bindings, pr_info};
 use crate::error::{code::*, Error, Result};
 use crate::file;
 use crate::str::CStr;
@@ -43,6 +43,7 @@ impl Cdev {
             (*cdev).ops = fops;
             (*cdev).owner = module.0;
         }
+        pr_info!("dev in alloc: {}", (*cdev).dev);
         // INVARIANTS:
         //   - [`self.0`] is valid and non-null.
         //   - [`(*self.0).ops`] is valid, non-null and has static lifetime,
@@ -59,6 +60,7 @@ impl Cdev {
         //   - [`(*self.0).owner`] will live at least as long as the
         //     module, which is an implicit requirement.
         let rc = unsafe { bindings::cdev_add(self.0, dev, count) };
+        pr_info!("dev in add: {}", dev);
         if rc != 0 {
             return Err(Error::from_kernel_errno(rc));
         }
@@ -137,6 +139,7 @@ impl<const N: usize> Registration<{ N }> {
         // SAFETY: We must ensure that we never move out of `this`.
         let this = unsafe { self.get_unchecked_mut() };
         if this.inner.is_none() {
+            pr_info!("register: {}", this.name);
             let mut dev: bindings::dev_t = 0;
             // SAFETY: Calling unsafe function. `this.name` has `'static`
             // lifetime.
@@ -151,6 +154,7 @@ impl<const N: usize> Registration<{ N }> {
             if res != 0 {
                 return Err(Error::from_kernel_errno(res));
             }
+            pr_info!("dev in register: {dev}");
             const NONE: Option<Cdev> = None;
             this.inner = Some(RegistrationInner {
                 dev,

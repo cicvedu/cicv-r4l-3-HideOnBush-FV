@@ -7,13 +7,7 @@
 //! [`include/linux/skbuff.h`](../../../../include/linux/skbuff.h).
 
 use crate::{
-    bindings, device,
-    error::{code::ENOMEM, from_kernel_result},
-    str::CStr,
-    sync::UniqueArc,
-    to_result,
-    types::PointerWrapper,
-    ARef, AlwaysRefCounted, Error, Result,
+    bindings, device, error::{code::ENOMEM, from_kernel_result}, pr_info, str::CStr, sync::UniqueArc, to_result, types::PointerWrapper, ARef, AlwaysRefCounted, Error, Result
 };
 use core::{
     cell::UnsafeCell,
@@ -197,6 +191,12 @@ impl<T: DeviceOperations> Registration<T> {
             Ok(())
         }
     }
+
+    /// unregistration for a network device.
+    pub fn unregister(&self) {
+        pr_info!("unregister net device\n");
+        unsafe {bindings::unregister_netdev(self.dev)};
+    }
 }
 
 impl<T: DeviceOperations> Drop for Registration<T> {
@@ -208,6 +208,7 @@ impl<T: DeviceOperations> Drop for Registration<T> {
             }
             bindings::free_netdev(self.dev);
         }
+        pr_info!("after unregister_netdev\n");
     }
 }
 
@@ -477,6 +478,16 @@ impl Napi {
         unsafe {
             bindings::napi_enable(self.0.get());
         }
+        pr_info!("napi enable\n");
+    }
+
+    /// Disable NAPI scheduling.
+    pub fn disable(&self) {
+        // SAFETY: The existence of a shared reference means `self.0` is valid.
+        unsafe {
+            bindings::napi_disable(self.0.get());
+        }
+        pr_info!("napi disable\n");
     }
 
     /// Schedule NAPI poll routine to be called if it is not already running.

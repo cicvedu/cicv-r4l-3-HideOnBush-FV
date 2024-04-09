@@ -9,6 +9,7 @@
  *  Shared /dev/zero mmapping support, Feb 2000, Kanoj Sarcar <kanoj@sgi.com>
  */
 
+#include "linux/printk.h"
 #include <linux/mm.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
@@ -408,6 +409,7 @@ static ssize_t read_port(struct file *file, char __user *buf,
 	unsigned long i = *ppos;
 	char __user *tmp = buf;
 
+	printk("read_port\n");
 	if (!access_ok(buf, count))
 		return -EFAULT;
 	while (count-- > 0 && i < 65536) {
@@ -426,6 +428,7 @@ static ssize_t write_port(struct file *file, const char __user *buf,
 	unsigned long i = *ppos;
 	const char __user *tmp = buf;
 
+	printk("write_port\n");
 	if (!access_ok(buf, count))
 		return -EFAULT;
 	while (count-- > 0 && i < 65536) {
@@ -622,6 +625,7 @@ static loff_t memory_lseek(struct file *file, loff_t offset, int orig)
 static int open_port(struct inode *inode, struct file *filp)
 {
 	int rc;
+	printk("open_port\n");
 
 	if (!capable(CAP_SYS_RAWIO))
 		return -EPERM;

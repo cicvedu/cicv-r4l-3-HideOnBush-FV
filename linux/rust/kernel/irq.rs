@@ -10,11 +10,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    bindings,
-    error::{from_kernel_result, to_result},
-    str::CString,
-    types::PointerWrapper,
-    Error, Result, ScopeGuard,
+    bindings, error::{from_kernel_result, to_result}, pr_info, str::CString, types::PointerWrapper, Error, Result, ScopeGuard
 };
 use core::{fmt, marker::PhantomData, ops::Deref};
 use macros::vtable;
@@ -327,6 +323,7 @@ impl<T: PointerWrapper> InternalRegistration<T> {
         data: T,
         name: fmt::Arguments<'_>,
     ) -> Result<Self> {
+        pr_info!("PointerWrapper registration\n");
         let ptr = data.into_pointer() as *mut _;
         let name = CString::try_from_fmt(name)?;
         let guard = ScopeGuard::new(|| {
@@ -366,6 +363,7 @@ impl<T: PointerWrapper> Drop for InternalRegistration<T> {
         //
         // SAFETY: This matches the call to `into_pointer` from `try_new` in the success case.
         unsafe { T::from_pointer(self.data) };
+        pr_info!("internal registration drop: free_irq\n");
     }
 }
 
@@ -414,6 +412,7 @@ impl<H: Handler> Registration<H> {
         flags: usize,
         name: fmt::Arguments<'_>,
     ) -> Result<Self> {
+        pr_info!("handler registration\n");
         // SAFETY: `handler` only calls `H::Data::borrow` on `raw_data`.
         Ok(Self(unsafe {
             InternalRegistration::try_new(irq, Some(Self::handler), None, flags, data, name)?
@@ -428,6 +427,12 @@ impl<H: Handler> Registration<H> {
         // because `from_pointer` is called only after the irq is unregistered.
         let data = unsafe { H::Data::borrow(raw_data) };
         H::handle_irq(data) as _
+    }
+
+    /// unregister an irq handler
+    pub fn drop_all(&mut self) {
+        pr_info!("drop in Handler Registration\n");
+        drop(&self.0);
     }
 }
 
@@ -486,6 +491,7 @@ impl<H: ThreadedHandler> ThreadedRegistration<H> {
     ) -> Result<Self> {
         // SAFETY: both `primary_handler` and `threaded_handler` only call `H::Data::borrow` on
         // `raw_data`.
+        pr_info!("ThreadedHandler registration\n");
         Ok(Self(unsafe {
             InternalRegistration::try_new(
                 irq,

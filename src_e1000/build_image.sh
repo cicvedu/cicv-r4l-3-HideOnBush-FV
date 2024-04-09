@@ -24,7 +24,8 @@ echo "#!/bin/sh" > etc/init.d/rcS
 echo "mount -t proc none /proc" >> etc/init.d/rcS
 echo "mount -t sysfs none /sys" >> etc/init.d/rcS
 echo "/sbin/mdev -s" >> etc/init.d/rcS
-echo "mknod /dev/cicv c 248 0" >> etc/init.d/rcS
+echo "mknod /dev/cicv1 c 249 0" >> etc/init.d/rcS
+echo "mknod /dev/cicv2 c 232 0" >> etc/init.d/rcS
 chmod +x etc/init.d/rcS
 if [ -f $rootfs_img ]; then
     rm $rootfs_img
