@@ -6,7 +6,7 @@
 //! variable.
 
 use super::{Guard, Lock, LockClassKey, LockInfo, NeedsLockClass};
-use crate::{bindings, str::CStr, task::Task, Opaque};
+use crate::{bindings, pr_info, str::CStr, task::Task, Opaque};
 use core::{marker::PhantomPinned, pin::Pin};
 
 /// Safely initialises a [`CondVar`] with the given name, generating a new lock class.
@@ -63,12 +63,16 @@ impl CondVar {
     #[must_use = "wait returns if a signal is pending, so the caller must check the return value"]
     pub fn wait<L: Lock<I>, I: LockInfo>(&self, guard: &mut Guard<'_, L, I>) -> bool {
         let lock = guard.lock;
+        pr_info!("define lock\n");
         let wait = Opaque::<bindings::wait_queue_entry>::uninit();
+        pr_info!("define wait\n");
 
         // SAFETY: `wait` points to valid memory.
         unsafe { bindings::init_wait(wait.get()) };
+        pr_info!("init_wait\n");
 
         // SAFETY: Both `wait` and `wait_list` point to valid memory.
+        pr_info!("{:?}, {:?}", self.wait_list.get(), wait.get());
         unsafe {
             bindings::prepare_to_wait_exclusive(
                 self.wait_list.get(),
@@ -76,17 +80,22 @@ impl CondVar {
                 bindings::TASK_INTERRUPTIBLE as _,
             )
         };
+        pr_info!("prepare_to_wait_exclusive\n");
 
         // SAFETY: The guard is evidence that the caller owns the lock.
         unsafe { lock.unlock(&mut guard.context) };
 
+        pr_info!("unlock\n");
         // SAFETY: No arguments, switches to another thread.
         unsafe { bindings::schedule() };
+        pr_info!("schedule\n");
 
         guard.context = lock.lock_noguard();
+        pr_info!("lock_noguard\n");
 
         // SAFETY: Both `wait` and `wait_list` point to valid memory.
         unsafe { bindings::finish_wait(self.wait_list.get(), wait.get()) };
+        pr_info!("finish_wait\n");
 
         Task::current().signal_pending()
     }

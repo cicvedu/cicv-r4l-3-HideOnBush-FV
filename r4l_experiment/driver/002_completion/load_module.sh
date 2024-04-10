@@ -9,7 +9,10 @@ function load() {
 
     rm -f /dev/${device}
 
-    major=$(awk -v device="$device" '$2==device {print $1}' /proc/devices)
+    major=$(awk -v device="completion" '$2==device {print $1}' /proc/devices)
+    echo "major: $major"
+    echo $major
+    echo "end"
     mknod /dev/${device} c $major 0
 
     chgrp $group /dev/$device
